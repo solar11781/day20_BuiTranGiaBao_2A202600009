@@ -1,4 +1,5 @@
 .venv/
+venv/
 __pycache__/
 *.pyc
 .env
@@ -8,6 +9,4 @@ __pycache__/
 dist/
 build/
 *.egg-info/
-reports/*.json
-reports/*.md
 !.gitkeep

@@ -2,76 +2,95 @@
 
 ## Scenario
 
-Bạn cần xây dựng một research assistant có thể nhận câu hỏi dài, tìm thông tin, phân tích và viết câu trả lời cuối cùng. Lab yêu cầu so sánh hai cách làm:
+This lab builds a small research assistant that accepts a query, gathers evidence, analyzes it, writes a final answer, and records enough trace information to explain what happened. The implementation compares two approaches:
 
-1. **Single-agent baseline**: một agent làm toàn bộ.
-2. **Multi-agent workflow**: Supervisor điều phối Researcher, Analyst, Writer.
+1. **Single-agent baseline**: one path performs search, synthesis, and answer writing.
+2. **Multi-agent workflow**: a Supervisor coordinates Researcher, Analyst, Writer, and Critic roles.
 
-## Quy tắc quan trọng
+## Rules used by this implementation
 
-- Không thêm agent nếu không có lý do rõ ràng.
-- Mỗi agent phải có responsibility riêng.
-- Shared state phải đủ rõ để debug.
-- Phải có trace hoặc log cho từng bước.
-- Phải benchmark, không chỉ nhìn output bằng cảm tính.
+- Each agent has one clear responsibility.
+- Shared state is the single handoff object between agents.
+- The workflow records trace events for routing, agent runs, fallback paths, and completion.
+- Benchmarking is generated automatically from actual run outputs and traces.
+- Guardrails are included for max iterations, timeout, retry, fallback, and validation.
 
 ## Milestone 1: Baseline
 
-File gợi ý:
+Implemented in:
 
 - `src/multi_agent_research_lab/cli.py`
 - `src/multi_agent_research_lab/services/llm_client.py`
+- `src/multi_agent_research_lab/services/search_client.py`
 
-TODO(student): thay baseline placeholder bằng một call LLM thật.
+The baseline command uses the same local search and deterministic synthesis components as the multi-agent workflow, but it performs the work in one pass. This provides a simple comparison point for latency, trace volume, answer length, and citation behavior.
 
 ## Milestone 2: Supervisor
 
-File gợi ý:
+Implemented in:
 
 - `src/multi_agent_research_lab/agents/supervisor.py`
 - `src/multi_agent_research_lab/graph/workflow.py`
 
-TODO(student): implement routing policy.
+Routing policy:
 
-Gợi ý câu hỏi thiết kế:
+```text
+researcher -> analyst -> writer -> critic -> done
+```
 
-- Khi nào gọi Researcher?
-- Khi nào gọi Analyst?
-- Khi nào gọi Writer?
-- Khi nào stop?
-- Nếu agent fail thì retry hay fallback?
+The Supervisor checks state fields to decide the next route. It also respects the configured max-iteration limit and routes to Writer before stopping if no final answer exists.
 
 ## Milestone 3: Worker agents
 
-File gợi ý:
+Implemented in:
 
-- `agents/researcher.py`
-- `agents/analyst.py`
-- `agents/writer.py`
+- `src/multi_agent_research_lab/agents/researcher.py`
+- `src/multi_agent_research_lab/agents/analyst.py`
+- `src/multi_agent_research_lab/agents/writer.py`
+- `src/multi_agent_research_lab/agents/critic.py`
 
-TODO(student): implement từng worker.
+Agent responsibilities:
 
-## Milestone 4: Trace và benchmark
+- **Researcher** retrieves local/mock sources and writes source-indexed research notes.
+- **Analyst** turns research notes into synthesis guidance, evidence, risks, and limitations.
+- **Writer** produces a final answer with source IDs and explicit limitations.
+- **Critic** validates final-answer presence, citation coverage, and workflow errors.
 
-File gợi ý:
+## Milestone 4: Trace and benchmark
 
-- `observability/tracing.py`
-- `evaluation/benchmark.py`
-- `evaluation/report.py`
+Implemented in:
 
-Benchmark tối thiểu:
+- `src/multi_agent_research_lab/observability/tracing.py`
+- `src/multi_agent_research_lab/evaluation/benchmark.py`
+- `src/multi_agent_research_lab/evaluation/report.py`
+- `src/multi_agent_research_lab/services/storage.py`
 
-| Metric | Cách đo gợi ý |
-|---|---|
-| Latency | wall-clock time |
-| Cost | token usage hoặc provider usage |
-| Quality | rubric 0-10 do peer review |
-| Citation coverage | số claims có source / tổng claims chính |
-| Failure rate | số query fail / tổng query |
+The benchmark command creates:
 
-## Exit ticket
+```text
+reports/benchmark_report.md
+reports/traces/run_01.json
+reports/traces/run_02.json
+...
+```
 
-Mỗi nhóm trả lời 2 câu:
+## Benchmark metrics
 
-1. Case nào nên dùng multi-agent? Vì sao?
-2. Case nào không nên dùng multi-agent? Vì sao?
+Metrics are generated from the produced state and output:
+
+| Metric            | How it is generated                                                                                                                                                 |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Latency           | Wall-clock runtime measured by `perf_counter`.                                                                                                                      |
+| Cost              | Sum of provider metadata. Local fallback runs report `0.0000`.                                                                                                      |
+| Quality proxy     | Output-derived heuristic using answer length, query-term overlap, citation coverage, traceability, role separation, completion, and penalties for errors/fallbacks. |
+| Citation coverage | Source IDs referenced in the final answer divided by retrieved source count.                                                                                        |
+| Failure rate      | Recorded errors divided by supervisor iterations.                                                                                                                   |
+| Trace events      | Number of JSON trace records in the run state.                                                                                                                      |
+| Fallback used     | Derived from fallback source metadata or fallback text in the final answer.                                                                                         |
+
+These numbers are intentionally lightweight for a two-hour lab. They are useful for comparing runs and inspecting behavior, but they are not a production-grade evaluation or human quality score.
+
+## Exit ticket answers
+
+1. Use multi-agent when traceability, role separation, validation, and guardrail evidence matter.
+2. Avoid multi-agent when the task is short, low risk, and a simple one-pass answer is enough.

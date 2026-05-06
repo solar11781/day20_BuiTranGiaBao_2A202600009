@@ -1,4 +1,4 @@
-"""Domain-specific errors for the lab skeleton."""
+"""Domain-specific errors for the lab package."""
 
 
 class LabError(Exception):
@@ -6,7 +6,7 @@ class LabError(Exception):
 
 
 class StudentTodoError(LabError):
-    """Raised where learners are expected to implement core logic."""
+    """Backward-compatible error type retained for starter tests."""
 
 
 class AgentExecutionError(LabError):

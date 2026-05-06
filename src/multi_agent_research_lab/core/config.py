@@ -18,10 +18,30 @@ class Settings(BaseSettings):
     log_level: str = Field(default="INFO", validation_alias="LOG_LEVEL")
 
     openai_api_key: str | None = Field(default=None, validation_alias="OPENAI_API_KEY")
-    openai_model: str = Field(default="gpt-4o-mini", validation_alias="OPENAI_MODEL")
+    openai_model: str = Field(default="gpt-4.1-nano", validation_alias="OPENAI_MODEL")
+    openai_search_model: str | None = Field(default=None, validation_alias="OPENAI_SEARCH_MODEL")
+    openai_search_mode: str = Field(default="model", validation_alias="OPENAI_SEARCH_MODE")
+    llm_provider: str = Field(default="openai", validation_alias="LLM_PROVIDER")
+    openai_input_cost_per_1m: float | None = Field(
+        default=None, ge=0, validation_alias="OPENAI_INPUT_COST_PER_1M"
+    )
+    openai_output_cost_per_1m: float | None = Field(
+        default=None, ge=0, validation_alias="OPENAI_OUTPUT_COST_PER_1M"
+    )
+    openai_web_search_cost_per_call: float | None = Field(
+        default=None, ge=0, validation_alias="OPENAI_WEB_SEARCH_COST_PER_CALL"
+    )
 
+    langsmith_tracing: bool = Field(default=False, validation_alias="LANGSMITH_TRACING")
     langsmith_api_key: str | None = Field(default=None, validation_alias="LANGSMITH_API_KEY")
-    langsmith_project: str = Field(default="multi-agent-research-lab", validation_alias="LANGSMITH_PROJECT")
+    langsmith_endpoint: str = Field(
+        default="https://api.smith.langchain.com",
+        validation_alias="LANGSMITH_ENDPOINT",
+    )
+    langsmith_project: str = Field(
+        default="multi-agent-research-lab",
+        validation_alias="LANGSMITH_PROJECT",
+    )
 
     tavily_api_key: str | None = Field(default=None, validation_alias="TAVILY_API_KEY")
 
